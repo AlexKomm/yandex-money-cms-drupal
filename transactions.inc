@@ -60,11 +60,7 @@ class YAMoneyTransaction extends stdClass {
  * @return YAMoneyTransaction
  */
 function yamoney_transaction_load($ymid) {
-  $row = $transaction = db_select('yamoney_transaction', 'yt')
-    ->fields('yt')
-    ->condition('yt.ymid', $ymid)
-    ->execute()
-    ->fetch();
+  $row = db_fetch_array(db_query('SELECT * FROM {yamoney_transaction} WHERE ymid = %d', $ymid));
 
   if (!$row) {
     return NULL;
@@ -88,20 +84,7 @@ function yamoney_transaction_save(YAMoneyTransaction $transaction) {
   $fields = (array) $transaction;
   $fields['data'] = serialize($transaction->data);
 
-  if ($transaction->ymid) {
-    return !!db_update('yamoney_transaction')
-      ->fields($fields)
-      ->condition('ymid', $transaction->ymid)
-      ->execute();
-  }
-  else {
-    unset($fields['ymid']);
-    $id = db_insert('yamoney_transaction')
-      ->fields($fields)
-      ->execute();
-    $transaction->ymid = $id;
-    return !!$id;
-  }
+  return !!drupal_write_record('yamoney_transaction', $fields, $transaction->ymid ? 'ymid' : array());
 }
 
 /**
@@ -111,10 +94,7 @@ function yamoney_transaction_save(YAMoneyTransaction $transaction) {
  * @return bool
  */
 function yamoney_update_transaction_status($ymid, $status) {
-  return !!db_update('yamoney_transaction')
-    ->fields(array('status' => $status))
-    ->condition('ymid', $ymid)
-    ->execute();
+  return !!db_query('UPDATE {yamoney_transaction} SET status = "%s" WHERE ymid = %d', $status, $ymid);
 }
 
 /**
@@ -123,9 +103,7 @@ function yamoney_update_transaction_status($ymid, $status) {
  * @return bool
  */
 function yamoney_transaction_delete($ymid) {
-  return !!db_delete('yamoney_transaction')
-    ->condition('ymid', $ymid)
-    ->execute();
+  return !!db_query('DELETE FROM {yamoney_transaction} WHERE ymid = %d', $ymid);
 }
 
 /**
@@ -133,16 +111,18 @@ function yamoney_transaction_delete($ymid) {
  * @return mixed
  */
 function yamoney_transactions_page() {
-  $transactions = db_select('yamoney_transaction', 'yt')
-    ->fields('yt')
-    ->extend('PagerDefault') // this adds the pager
-    ->limit(20);
-  $transactions = $transactions->execute()->fetchAll();
+  $sql = 'SELECT * FROM {yamoney_transaction}';
 
-  $table = yamoney_create_transaction_table($transactions);
-  $output = drupal_render($table);
+  $rez = pager_query($sql, 20, 0, NULL);
+
+  $transactions = array();
+
+  while ($row = db_fetch_array($rez)) {
+    $transactions[] = $row;
+  }
+
   drupal_set_title(t('Transactions'));
-  return $output;
+  return yamoney_create_transaction_table($transactions);
 }
 
 /**
@@ -151,17 +131,17 @@ function yamoney_transactions_page() {
  * @return bool|string
  */
 function yamoney_transactions_user_page($user) {
-  $transactions = db_select('yamoney_transaction', 'yt')
-    ->fields('yt')
-    ->condition('uid', $user->uid)
-    ->extend('PagerDefault') // this adds the pager
-    ->limit(20);
-  $transactions = $transactions->execute()->fetchAll();
+  $sql = 'SELECT * FROM {yamoney_transaction} WHERE uid = %d';
 
-  $table = yamoney_create_transaction_table($transactions);
-  $output = drupal_render($table);
+  $rez = pager_query($sql, 20, 0, NULL, $user->uid);
+
+  $transactions = array();
+  while ($row = db_fetch_array($rez)) {
+    $transactions[] = $row;
+  }
+
   drupal_set_title(t('My transactions'));
-  return $output;
+  return yamoney_create_transaction_table($transactions);
 }
 
 
@@ -176,24 +156,15 @@ function yamoney_create_transaction_table($table_rows) {
       $rows[] = yamoney_transaction_build_payment_row((array) $item);
     }
     $header = array(t('Id'), t('Name'), t('Amount'), t('Date/Time'), t('Status'), t('E-mail'), t('Order ID'));
-    $table['table_rows'] = array(
-      '#theme' => 'table',
-      '#rows' => $rows,
-      '#header' => $header,
-    );
-
-    $table['pager'] = array(
-      '#theme' => 'pager',
-      '#weight' => 5,
-    );
+    $output  = theme('table', $header, $rows);
+    $output .= theme('pager', NULL, 20, 0);
   }
   else {
-    $table = array(
-      '#type' => 'markup',
-      '#markup' => t('There no transactions.'),
-    );
+    $output = t('There no transactions.');
   }
-  return $table;
+
+
+  return $output;
 }
 
 /**

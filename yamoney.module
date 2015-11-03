@@ -111,12 +111,12 @@ function yamoney_menu() {
 function yamoney_complete_page() {
   drupal_set_title(t('Congratulations!'));
   module_invoke_all('yamoney_complete');
-  $success = variable_get('yamoney_success_text', array('value' => ''));
+  $success = variable_get('yamoney_success_text', '');
   $page = array(
-    '#markup' => $success['value'],
+    '#value' => $success,
   );
   drupal_alter('yamoney_complete_page', $page);
-  return $page;
+  return drupal_render($page);
 }
 
 /**
@@ -126,9 +126,9 @@ function yamoney_complete_page() {
 function yamoney_fail_page() {
   drupal_set_title(t('Sorry!'));
   module_invoke_all('yamoney_fail');
-  $fail = variable_get('yamoney_fail_text', array('value' => ''));
+  $fail = variable_get('yamoney_fail_text', '');
   $page = array(
-    '#markup' => $fail['value'],
+    '#value' => $fail,
   );
   drupal_alter('yamoney_fail_page', $page);
   return $page;
@@ -301,7 +301,7 @@ function yamoney_check_send_result($type, $code = 0, $message = '') {
   echo '<?xml version="1.0" encoding="UTF-8"?>';
   echo '<' . $type . ' ' . drupal_attributes($attributes) . ' />';
 
-  drupal_exit();
+  exit();
 }
 
 /**

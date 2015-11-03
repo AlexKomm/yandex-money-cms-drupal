@@ -70,7 +70,9 @@ function yamoney_schema() {
 /**
  * Allow fields 'uid', 'mail', 'order_id' and 'data' to be NULL
  */
-function yamoney_update_7100(&$sandbox) {
+function yamoney_update_6100() {
+  $ret = array();
+
   $change_fields = array(
     'uid' => array(
       'type' => 'int',
@@ -101,14 +103,22 @@ function yamoney_update_7100(&$sandbox) {
     ),
   );
   foreach ($change_fields as $field_name => $field_config) {
-    db_change_field('yamoney_transaction', $field_name, $field_name, $field_config);
+    db_change_field($ret, 'yamoney_transaction', $field_name, $field_name, $field_config);
   }
+
+  return $ret;
+}
+
+function yamoney_install() {
+  drupal_install_schema('yamoney');
 }
 
 /**
  *
  */
 function yamoney_uninstall() {
+  drupal_uninstall_schema('yamoney');
+
   $variables = array(
     'yamoney_ip',
     'yamoney_mode',
